@@ -47,16 +47,11 @@ const adminSchema = new Schema(
   }
 );
 
-adminSchema.pre("save", async function hashPassword(next) {
-  if (!this.isModified("password")) return next();
+adminSchema.pre("save", async function hashPassword() {
+  if (!this.isModified("password")) return;
 
-  try {
-    const saltRounds = 12;
-    this.password = await bcrypt.hash(this.password, saltRounds);
-    return next();
-  } catch (error) {
-    return next(error);
-  }
+  const saltRounds = 12;
+  this.password = await bcrypt.hash(this.password, saltRounds);
 });
 
 adminSchema.methods.comparePassword = async function comparePassword(candidatePassword) {

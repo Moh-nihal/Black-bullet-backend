@@ -9,7 +9,8 @@ require("./models/Admin");
 require("./models/Booking");
 require("./models/Service");
 require("./models/Settings");
-require("./models/Post");
+require("./models/Blogs");
+require("./models/GalleryItem");
 
 const PORT = Number(process.env.PORT) || 5000;
 let server;

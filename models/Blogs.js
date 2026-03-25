@@ -2,11 +2,11 @@ const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
-const postSchema = new Schema(
+const blogPostSchema = new Schema(
   {
     title: {
       type: String,
-      required: [true, "Post title is required"],
+      required: [true, "Blog title is required"],
       trim: true,
       minlength: [3, "Title must be at least 3 characters"],
       maxlength: [180, "Title cannot exceed 180 characters"],
@@ -33,7 +33,12 @@ const postSchema = new Schema(
     },
     content: {
       type: String,
-      required: [true, "Post content is required"],
+      required: [true, "Blog content is required"],
+    },
+    author: {
+      type: String,
+      trim: true,
+      maxlength: [120, "Author cannot exceed 120 characters"],
     },
     tags: [
       {
@@ -42,9 +47,10 @@ const postSchema = new Schema(
         lowercase: true,
       },
     ],
-    featuredImage: {
+    image: {
       type: String,
       trim: true,
+      alias: "featuredImage",
     },
     ogImage: {
       type: String,
@@ -82,7 +88,13 @@ const postSchema = new Schema(
   }
 );
 
-postSchema.index({ status: 1, publishedAt: -1 });
-postSchema.index({ title: "text", shortDesc: "text", content: "text" });
+blogPostSchema.index({ status: 1, publishedAt: -1 });
+blogPostSchema.index({ title: "text", shortDesc: "text", content: "text" });
 
-module.exports = mongoose.model("Post", postSchema);
+const BlogPost = mongoose.models.BlogPost || mongoose.model("BlogPost", blogPostSchema);
+
+if (!mongoose.models.Blog) {
+  mongoose.model("Blog", blogPostSchema, "blogs");
+}
+
+module.exports = BlogPost;

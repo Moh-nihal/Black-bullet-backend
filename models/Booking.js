@@ -4,12 +4,13 @@ const { Schema } = mongoose;
 
 const bookingSchema = new Schema(
   {
-    name: {
+    customerName: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, "Customer name is required"],
       trim: true,
-      minlength: [2, "Name must be at least 2 characters"],
-      maxlength: [120, "Name cannot exceed 120 characters"],
+      minlength: [2, "Customer name must be at least 2 characters"],
+      maxlength: [120, "Customer name cannot exceed 120 characters"],
+      alias: "name",
     },
     phone: {
       type: String,
@@ -24,33 +25,38 @@ const bookingSchema = new Schema(
       match: [/^\S+@\S+\.\S+$/, "Please provide a valid email address"],
       index: true,
     },
-    carModel: {
+    serviceType: {
       type: String,
+      required: [true, "Service type is required"],
       trim: true,
-      maxlength: [120, "Car model cannot exceed 120 characters"],
-    },
-    vehicleType: {
-      type: String,
-      trim: true,
-      maxlength: [80, "Vehicle type cannot exceed 80 characters"],
-    },
-    serviceId: {
-      type: Schema.Types.ObjectId,
-      ref: "Service",
-      required: [true, "Service is required"],
+      maxlength: [120, "Service type cannot exceed 120 characters"],
       index: true,
     },
-    date: {
+    preferredDate: {
       type: Date,
-      required: [true, "Date is required"],
+      required: [true, "Preferred date is required"],
       index: true,
     },
-    time: {
-      type: String,
-      required: [true, "Time is required"],
-      trim: true,
-      match: [/^([01]\d|2[0-3]):([0-5]\d)$/, "Time must be in HH:mm format"],
-      index: true,
+    vehicleDetails: {
+      make: {
+        type: String,
+        trim: true,
+        maxlength: [120, "Vehicle make cannot exceed 120 characters"],
+      },
+      model: {
+        type: String,
+        trim: true,
+        maxlength: [120, "Vehicle model cannot exceed 120 characters"],
+      },
+      year: {
+        type: Number,
+        min: [1900, "Vehicle year is invalid"],
+      },
+      plateNumber: {
+        type: String,
+        trim: true,
+        maxlength: [40, "Plate number cannot exceed 40 characters"],
+      },
     },
     notes: {
       type: String,
@@ -77,8 +83,7 @@ bookingSchema.path("email").validate(function validateContactEmail(value) {
   return Boolean(value || this.phone);
 }, "Either email or phone is required");
 
-bookingSchema.index({ date: 1, time: 1 }, { unique: true, name: "uniq_booking_slot" });
-bookingSchema.index({ serviceId: 1, date: 1 });
-bookingSchema.index({ status: 1, date: 1 });
+bookingSchema.index({ serviceType: 1, preferredDate: 1 });
+bookingSchema.index({ status: 1, preferredDate: 1 });
 
 module.exports = mongoose.model("Booking", bookingSchema);

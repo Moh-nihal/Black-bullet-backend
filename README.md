@@ -64,6 +64,12 @@ npm run dev
 npm start
 ```
 
+- Seed CMS content defaults:
+
+```bash
+npm run seed:content
+```
+
 ## API Endpoints
 
 - `GET /`
@@ -183,6 +189,20 @@ npm start
   - Roles: `admin`, `super_admin`
   - Returns: `{ ok, message }`
 
+- `GET /api/admin/content/:pageKey`
+  - Fetch a CMS content document by `pageKey`
+  - Roles: `editor`, `admin`, `super_admin`
+  - Allowed `pageKey`: `home`, `services`, `gallery`, `blog`, `settings`
+  - Returns: `{ ok, data }`
+
+- `PUT /api/admin/content/:pageKey`
+  - Upsert a CMS content document by `pageKey`
+  - Roles: `editor`, `admin`, `super_admin`
+  - Allowed `pageKey`: `home`, `services`, `gallery`, `blog`, `settings`
+  - Body: JSON object content for the page
+  - Notes: image fields are stored as URL/string values; upload remains on `/api/media/upload`
+  - Returns: `{ ok, data }`
+
 - `POST /api/bookings`
   - Create a new public booking (from the booking form)
   - Returns: `{ ok, data }`
@@ -221,6 +241,7 @@ The server registers these Mongoose models at startup:
 - `Service`
 - `Settings`
 - `Blog`
+- `ContentPage`
 
 ## Project Structure
 
@@ -237,6 +258,7 @@ Black_bullet_backend/
     adminServicesController.js
     adminBlogController.js
     adminGalleryController.js
+    adminContentController.js
     mediaController.js
   middleware/
     authMiddleware.js
@@ -250,8 +272,11 @@ Black_bullet_backend/
     adminServices.js # Admin services CRUD endpoints
     adminBlog.js     # Admin blog CRUD endpoints
     adminGallery.js # Admin gallery CRUD endpoints
+    adminContent.js # Admin CMS content endpoints
     health.js       # Health-check endpoint
     media.js        # Media upload/delete endpoints
+  scripts/
+    seedContentPages.js # Idempotent CMS content seed
   utils/
     jwt.js          # JWT sign and verify helpers
 ```

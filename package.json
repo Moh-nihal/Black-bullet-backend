@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "echo \"No tests configured\""
+    "test": "echo \"No tests configured\"",
+    "seed:content": "node scripts/seedContentPages.js"
   },
   "keywords": [],
   "author": "",

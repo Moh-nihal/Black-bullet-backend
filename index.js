@@ -11,6 +11,7 @@ require("./models/Service");
 require("./models/Settings");
 require("./models/Blogs");
 require("./models/GalleryItem");
+require("./models/ContentPage");
 
 const PORT = Number(process.env.PORT) || 5000;
 let server;

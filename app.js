@@ -12,6 +12,7 @@ const adminServicesRouter = require("./routes/adminServices");
 const adminBlogRouter = require("./routes/adminBlog");
 const adminGalleryRouter = require("./routes/adminGallery");
 const adminBookingsRouter = require("./routes/adminBookings");
+const adminContentRouter = require("./routes/adminContent");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -47,6 +48,7 @@ app.use("/api/admin/services", adminServicesRouter);
 app.use("/api/admin/blog", adminBlogRouter);
 app.use("/api/admin/gallery", adminGalleryRouter);
 app.use("/api/admin/bookings", adminBookingsRouter);
+app.use("/api/admin/content", adminContentRouter);
 app.use("/api/media", mediaRouter);
 
 app.use(notFoundHandler);

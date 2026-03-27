@@ -296,9 +296,14 @@ const updateService = async (req, res, next) => {
 
     const explicitPublicIds = normalizeImagePublicIds(req.body.removedImagePublicIds);
     const previousImages = normalizeImages(req.body.previousImages);
+    
+    // Only delete images that were in previousImages but are NO LONGER in payload.images
+    const updatedImages = payload.images || service.images || [];
+    const removedImages = previousImages.filter(img => !updatedImages.includes(img));
+
     const publicIdsToDelete = collectPublicIdsForCleanup({
       explicitPublicIds,
-      imageUrls: previousImages,
+      imageUrls: removedImages,
     });
 
     await deleteCloudinaryAssets(publicIdsToDelete);

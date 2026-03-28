@@ -22,6 +22,16 @@ const galleryItemSchema = new Schema(
       required: [true, "Media URL is required"],
       trim: true,
     },
+    width: {
+      type: Number,
+      min: [1, "Width must be greater than 0"],
+      default: null,
+    },
+    height: {
+      type: Number,
+      min: [1, "Height must be greater than 0"],
+      default: null,
+    },
     thumbnail: {
       type: String,
       trim: true,

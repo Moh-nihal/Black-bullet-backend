@@ -7,6 +7,7 @@ const healthRouter = require("./routes/health");
 const mediaRouter = require("./routes/media");
 const authRouter = require("./routes/auth");
 const bookingsRouter = require("./routes/bookings");
+const publicRouter = require("./routes/public");
 const adminDashboardRouter = require("./routes/adminDashboard");
 const adminServicesRouter = require("./routes/adminServices");
 const adminBlogRouter = require("./routes/adminBlog");
@@ -41,6 +42,7 @@ app.get("/", (_req, res) => {
 });
 
 app.use("/api/health", healthRouter);
+app.use("/api/public", publicRouter);
 app.use("/api/admin", authRouter);
 app.use("/api/admin/dashboard", adminDashboardRouter);
 app.use("/api/bookings", bookingsRouter);

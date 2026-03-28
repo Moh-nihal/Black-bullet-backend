@@ -110,6 +110,8 @@ const createGalleryItem = async (req, res, next) => {
       title,
       type,
       url: uploadResult.url,
+      width: uploadResult.width || null,
+      height: uploadResult.height || null,
       thumbnail,
       publicId: uploadResult.publicId,
       category: normalizeNullableString(req.body?.category),

@@ -189,6 +189,7 @@ const DEFAULT_CONTENT = {
       "The pinnacle of performance tuning and aesthetic restoration in Dubai. Driven by precision, forged in heat.",
     copyrightText: "© 2024 BLACK BULLET GARAGE PERFORMANCE DUBAI. ALL RIGHTS RESERVED.",
     mapsEmbedUrl: "https://www.google.com/maps/embed?pb=example",
+    slotDuration: 30,
     workingHours: [
       { day: "Monday", open: "09:00", close: "20:00", closed: false },
       { day: "Tuesday", open: "09:00", close: "20:00", closed: false },

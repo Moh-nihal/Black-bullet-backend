@@ -1,6 +1,19 @@
 const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
+const DUBAI_UTC_OFFSET_MINUTES = 4 * 60;
+const ACTIVE_BLOCKING_STATUSES = ["PENDING", "CONFIRMED", "IN-PROGRESS", "COMPLETED", "CRITICAL"];
+
+const getDubaiSlotKey = (preferredDate) => {
+  if (!(preferredDate instanceof Date) || Number.isNaN(preferredDate.getTime())) return null;
+  const shifted = new Date(preferredDate.getTime() + (DUBAI_UTC_OFFSET_MINUTES * 60 * 1000));
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth() + 1;
+  const day = shifted.getUTCDate();
+  const hours = shifted.getUTCHours();
+  const minutes = shifted.getUTCMinutes();
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}|${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+};
 
 const bookingSchema = new Schema(
   {
@@ -69,6 +82,11 @@ const bookingSchema = new Schema(
       },
       trim: true,
       maxlength: [20, "Preferred time cannot exceed 20 characters"],
+      index: true,
+    },
+    slotKey: {
+      type: String,
+      trim: true,
       index: true,
     },
 
@@ -153,10 +171,24 @@ bookingSchema.pre("validate", function normalizeLegacyStatus() {
     ]);
     if (allowed.has(candidate)) this.status = candidate;
   }
+
+  if (this.preferredDate instanceof Date && !Number.isNaN(this.preferredDate.getTime())) {
+    this.slotKey = getDubaiSlotKey(this.preferredDate);
+  }
 });
 
 bookingSchema.index({ vehicleType: 1, preferredDate: 1 });
 bookingSchema.index({ serviceType: 1, preferredDate: 1 });
 bookingSchema.index({ status: 1, preferredDate: 1 });
+bookingSchema.index(
+  { slotKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      slotKey: { $exists: true },
+      status: { $in: ACTIVE_BLOCKING_STATUSES },
+    },
+  }
+);
 
 module.exports = mongoose.model("Booking", bookingSchema);

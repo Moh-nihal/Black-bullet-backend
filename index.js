@@ -8,7 +8,6 @@ const connectDB = require("./config/db");
 require("./models/Admin");
 require("./models/Booking");
 require("./models/Service");
-require("./models/Settings");
 require("./models/Blogs");
 require("./models/GalleryItem");
 require("./models/ContentPage");

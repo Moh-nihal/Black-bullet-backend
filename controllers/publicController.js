@@ -6,6 +6,11 @@ const Service = require("../models/Service");
 const GalleryItem = require("../models/GalleryItem");
 
 const normalizeString = (value) => (typeof value === "string" ? value.trim() : "");
+const {
+  resolveRequestLocale,
+  localizeBlogForPublic,
+  localizeServiceForPublic,
+} = require("../utils/i18n");
 
 const parsePagination = (query) => {
   const page = Math.max(1, Number(query.page) || 1);
@@ -43,9 +48,10 @@ const listPublicBlogs = async (req, res, next) => {
     const { page, limit, skip } = parsePagination(req.query);
     const category = normalizeString(req.query.category);
     const filters = { status: "published" };
+    const locale = resolveRequestLocale(req);
 
     if (category) {
-      filters.category = category;
+      filters.$or = [{ "category.en": category }, { "category.ar": category }];
     }
 
     const [blogs, total] = await Promise.all([
@@ -53,9 +59,11 @@ const listPublicBlogs = async (req, res, next) => {
       Blog.countDocuments(filters),
     ]);
 
+    const localizedBlogs = blogs.map((blog) => localizeBlogForPublic(blog, locale));
+
     res.status(200).json({
       success: true,
-      data: blogs,
+      data: localizedBlogs,
       pagination: {
         page,
         limit,
@@ -72,6 +80,7 @@ const getPublicBlogBySlugOrId = async (req, res, next) => {
   try {
     const identifier = normalizeString(req.params.slugOrId);
     const filters = { status: "published" };
+    const locale = resolveRequestLocale(req);
 
     if (mongoose.Types.ObjectId.isValid(identifier)) {
       filters.$or = [{ _id: identifier }, { slug: identifier }];
@@ -86,7 +95,7 @@ const getPublicBlogBySlugOrId = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: blog,
+      data: localizeBlogForPublic(blog, locale),
     });
   } catch (error) {
     next(error);
@@ -98,9 +107,10 @@ const listPublicServices = async (req, res, next) => {
     const { page, limit, skip } = parsePagination(req.query);
     const category = normalizeString(req.query.category);
     const filters = { status: "active" };
+    const locale = resolveRequestLocale(req);
 
     if (category) {
-      filters.category = category;
+      filters.$or = [{ "category.en": category }, { "category.ar": category }];
     }
 
     const [services, total] = await Promise.all([
@@ -108,9 +118,11 @@ const listPublicServices = async (req, res, next) => {
       Service.countDocuments(filters),
     ]);
 
+    const localizedServices = services.map((service) => localizeServiceForPublic(service, locale));
+
     res.status(200).json({
       success: true,
-      data: services,
+      data: localizedServices,
       pagination: {
         page,
         limit,
@@ -127,6 +139,7 @@ const getPublicServiceBySlugOrId = async (req, res, next) => {
   try {
     const identifier = normalizeString(req.params.idOrSlug);
     const filters = { status: "active" };
+    const locale = resolveRequestLocale(req);
 
     if (mongoose.Types.ObjectId.isValid(identifier)) {
       filters.$or = [{ _id: identifier }, { slug: identifier }];
@@ -141,7 +154,7 @@ const getPublicServiceBySlugOrId = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: service,
+      data: localizeServiceForPublic(service, locale),
     });
   } catch (error) {
     next(error);

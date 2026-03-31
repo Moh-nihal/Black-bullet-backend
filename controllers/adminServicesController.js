@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const Service = require("../models/Service");
 const { deleteMediaFile } = require("../services/mediaService");
+const { normalizeBilingualField, assertBilingualRequired } = require("../utils/i18n");
 
 const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value);
 
@@ -111,25 +112,81 @@ const deleteCloudinaryAssets = async (publicIds) => {
 const buildServicePayload = (body, { partial = false } = {}) => {
   const payload = {};
 
-  const title = normalizeString(body.title);
   const slugInput = normalizeString(body.slug);
-  const description = normalizeString(body.description);
-  const category = normalizeString(body.category);
   const status = normalizeString(body.status);
-  const metaTitle = normalizeString(body.metaTitle);
-  const metaDescription = normalizeString(body.metaDescription);
-  const features = normalizeStringArray(body.features);
   const metaKeywords = normalizeStringArray(body.metaKeywords);
   const images = normalizeImages(body.images);
 
-  if (!partial || title) payload.title = title;
-  if (!partial || slugInput || title) payload.slug = slugify(slugInput || title);
-  if (!partial || description) payload.description = description;
-  if (!partial || category) payload.category = category;
+  const readLocalizedField = (value, fieldName) => {
+    const normalized = normalizeBilingualField(value, { fieldName });
+    if (!normalized.ok) {
+      const error = normalized.error || new Error(`${fieldName} is invalid`);
+      error.statusCode = 400;
+      throw error;
+    }
+    return normalized.value;
+  };
+
+  const readLocalizedFeatures = (value) => {
+    if (value === undefined) return undefined;
+    if (!Array.isArray(value)) {
+      const error = new Error("features must be an array");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    return value
+      .map((item, index) => {
+        const normalized = normalizeBilingualField(item, { fieldName: `features[${index}]` });
+        if (!normalized.ok) {
+          const error = normalized.error || new Error(`features[${index}] is invalid`);
+          error.statusCode = 400;
+          throw error;
+        }
+        return normalized.value;
+      })
+      .filter((item) => normalizeString(item?.en) || normalizeString(item?.ar));
+  };
+
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "title")) {
+    payload.title = readLocalizedField(body.title, "title");
+  }
+
+  const resolvedTitleForSlug = payload.title;
+  const titleEnOrAr =
+    resolvedTitleForSlug && (normalizeString(resolvedTitleForSlug.en) || normalizeString(resolvedTitleForSlug.ar));
+
+  const shouldComputeSlug =
+    !partial || Boolean(slugInput) || Object.prototype.hasOwnProperty.call(body, "title");
+
+  if (shouldComputeSlug) {
+    const slugSource = slugInput || titleEnOrAr || "";
+    payload.slug = slugify(slugSource);
+  }
+
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "description")) {
+    payload.description = readLocalizedField(body.description, "description");
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "category")) {
+    payload.category = readLocalizedField(body.category, "category");
+  }
   if (!partial || status) payload.status = status;
-  if (!partial || metaTitle) payload.metaTitle = metaTitle;
-  if (!partial || metaDescription) payload.metaDescription = metaDescription;
-  if (!partial || features.length > 0) payload.features = features;
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "metaTitle")) {
+    payload.metaTitle = readLocalizedField(body.metaTitle, "metaTitle");
+  }
+  if (!partial || Object.prototype.hasOwnProperty.call(body, "metaDescription")) {
+    payload.metaDescription = readLocalizedField(body.metaDescription, "metaDescription");
+  }
+
+  if (partial) {
+    const nextFeatures = readLocalizedFeatures(body.features);
+    if (nextFeatures !== undefined) {
+      payload.features = nextFeatures;
+    }
+  } else if (Object.prototype.hasOwnProperty.call(body, "features")) {
+    payload.features = readLocalizedFeatures(body.features) || [];
+  }
+
   if (!partial || metaKeywords.length > 0) payload.metaKeywords = metaKeywords;
   if (!partial || images.length > 0 || Array.isArray(body.images)) payload.images = images;
 
@@ -154,14 +211,29 @@ const listServices = async (req, res, next) => {
 
     const filters = {};
     if (status) filters.status = status;
-    if (category) filters.category = category;
+
+    const andParts = [];
+    if (category) {
+      andParts.push({ $or: [{ "category.en": category }, { "category.ar": category }] });
+    }
+
     if (search) {
       const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filters.$or = [
-        { title: { $regex: safeSearch, $options: "i" } },
+      andParts.push({
+        $or: [
+        { "title.en": { $regex: safeSearch, $options: "i" } },
+        { "title.ar": { $regex: safeSearch, $options: "i" } },
         { slug: { $regex: safeSearch, $options: "i" } },
-        { description: { $regex: safeSearch, $options: "i" } },
-      ];
+        { "description.en": { $regex: safeSearch, $options: "i" } },
+        { "description.ar": { $regex: safeSearch, $options: "i" } },
+        ],
+      });
+    }
+
+    if (andParts.length === 1) {
+      Object.assign(filters, andParts[0]);
+    } else if (andParts.length > 1) {
+      filters.$and = andParts;
     }
 
     const [services, total] = await Promise.all([
@@ -188,11 +260,7 @@ const createService = async (req, res, next) => {
   try {
     const payload = buildServicePayload(req.body, { partial: false });
 
-    if (!payload.title) {
-      const error = new Error("title is required");
-      error.statusCode = 400;
-      throw error;
-    }
+    assertBilingualRequired(payload.title, { fieldName: "title" });
 
     if (!payload.slug) {
       const error = new Error("slug is required");

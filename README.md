@@ -49,6 +49,8 @@ CLOUDINARY_API_SECRET=your_api_secret
 - `CLOUDINARY_API_SECRET`: Cloudinary API secret (**required** for media endpoints)
 - `JWT_SECRET`: Secret used to sign/verify admin access tokens (**required** for auth)
 - `JWT_EXPIRES_IN`: Token expiry duration (default: `7d`)
+- `RECAPTCHA_SECRET_KEY`: Google reCAPTCHA secret (**required** for protected public forms)
+- `RECAPTCHA_MIN_SCORE`: Minimum accepted reCAPTCHA score (default: `0.5`)
 
 ## Run
 
@@ -117,7 +119,10 @@ npm run seed:content
 - `POST /api/admin/services`
   - Create a new service
   - Roles: `admin`, `super_admin`
-  - Body: `title` (required), optional `slug`, `description`, `price`, `images`, `features`, `category`, `status`, `metaTitle`, `metaDescription`, `metaKeywords`
+  - Body: `title` (required) as `{ "en": "...", "ar": "..." }`, optional `slug`, `description`, `price`, `images`, `features`, `category`, `status`, `metaTitle`, `metaDescription`, `metaKeywords`
+  - Notes:
+    - Localized fields accept either `{ en, ar }` objects or a legacy plain string (the backend will duplicate the string into both languages on save).
+    - `features` is an array of `{ en, ar }` objects (or legacy strings).
   - Returns: `{ ok, data }`
 
 - `GET /api/admin/services/:id`
@@ -146,7 +151,11 @@ npm run seed:content
 - `POST /api/admin/blog`
   - Create a new blog post (slug auto-generated from title when missing)
   - Roles: `admin`, `super_admin`
-  - Body: `title`, `content` (required), optional `slug`, `category`, `shortDesc`, `author`, `tags`, `image`, `ogImage`, `metaTitle`, `metaDescription`, `status`, `publishedAt`, `views`
+  - Body: `title`, `content` (required) as `{ "en": "...", "ar": "..." }`, optional `slug`, `category`, `shortDesc`, `author`, `tags`, `image`, `ogImage`, `metaTitle`, `metaDescription`, `status`, `publishedAt`, `views`
+  - Notes:
+    - Localized fields accept either `{ en, ar }` objects or a legacy plain string (the backend will duplicate the string into both languages on save).
+    - Optional localized fields (`category`, `shortDesc`, `metaTitle`, `metaDescription`) can be omitted; otherwise use `{ en, ar }`.
+    - Slug auto-generation prefers English title text, then Arabic.
   - `image` / `ogImage` should be Cloudinary URLs (e.g. returned from `/api/media/upload`)
   - Returns: `{ ok, data }`
 
@@ -203,8 +212,32 @@ npm run seed:content
   - Notes: image fields are stored as URL/string values; upload remains on `/api/media/upload`
   - Returns: `{ ok, data }`
 
+- `GET /api/public/bookings/available-slots`
+  - List available booking slots for a specific day
+  - Query: `date=YYYY-MM-DD`
+  - Localization note: slot generation uses configured working hours (see CMS `settings` page content)
+  - Returns: `["09:00", "10:00", ...]`
+
+- `GET /api/public/landing/:slug`
+  - Fetches an active landing page variant using weighted A/B logic
+  - Tracks view + device analytics for the selected variant
+  - Returns: `{ ok, data: { landingPageId, slug, title, metaTitle, metaDescription, variant } }`
+
+- `POST /api/public/landing/:slug/convert`
+  - Tracks CTA conversion for landing variants
+  - Body: `{ "type": "whatsapp|call|form", "variantId": "<ObjectId>" }`
+  - Returns: `{ ok, message }`
+
+- `POST /api/public/landing/:slug/leads`
+  - Submits landing lead form entry
+  - Body includes: `name`, `phone`, `variantId`, optional lead fields, and `recaptchaToken`
+  - Returns: `{ ok, message, data }`
+
 - `POST /api/bookings`
   - Create a new public booking (from the booking form)
+  - Validates selected date/time against configured working hours
+  - Prevents double-booking with `409 Conflict`
+  - Requires `recaptchaToken`
   - Returns: `{ ok, data }`
 
 - `GET /api/admin/bookings`
@@ -239,9 +272,10 @@ The server registers these Mongoose models at startup:
 - `Admin`
 - `Booking`
 - `Service`
-- `Settings`
 - `Blog`
 - `ContentPage`
+- `LandingPage`
+- `LandingLead`
 
 ## Project Structure
 

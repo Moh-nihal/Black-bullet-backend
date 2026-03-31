@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const { deleteMediaFile } = require("../services/mediaService");
+const { normalizeBilingualField, assertBilingualRequired } = require("../utils/i18n");
 require("../models/Blogs");
 
 const Blog = mongoose.model("Blog") || mongoose.model("BlogPost");
@@ -39,6 +40,19 @@ const parseTags = (value) => {
 
   return [];
 };
+
+const readLocalizedField = (value, fieldName) => {
+  const normalized = normalizeBilingualField(value, { fieldName });
+  if (!normalized.ok) {
+    const error = normalized.error || new Error(`${fieldName} is invalid`);
+    error.statusCode = 400;
+    throw error;
+  }
+  return normalized.value;
+};
+
+const blogTitleSlugSource = (title) =>
+  title && (normalizeString(title.en) || normalizeString(title.ar) || "");
 
 const extractCloudinaryPublicId = (value) => {
   if (typeof value !== "string") return null;
@@ -81,15 +95,29 @@ const listBlogs = async (req, res, next) => {
 
     const filters = {};
     if (status) filters.status = status;
-    if (category) filters.category = category;
+
+    const andParts = [];
+    if (category) {
+      andParts.push({ $or: [{ "category.en": category }, { "category.ar": category }] });
+    }
 
     if (search) {
       const safeSearch = escapeRegex(search);
-      filters.$or = [
-        { title: { $regex: safeSearch, $options: "i" } },
+      andParts.push({
+        $or: [
+        { "title.en": { $regex: safeSearch, $options: "i" } },
+        { "title.ar": { $regex: safeSearch, $options: "i" } },
         { slug: { $regex: safeSearch, $options: "i" } },
-        { shortDesc: { $regex: safeSearch, $options: "i" } },
-      ];
+        { "shortDesc.en": { $regex: safeSearch, $options: "i" } },
+        { "shortDesc.ar": { $regex: safeSearch, $options: "i" } },
+        ],
+      });
+    }
+
+    if (andParts.length === 1) {
+      Object.assign(filters, andParts[0]);
+    } else if (andParts.length > 1) {
+      filters.$and = andParts;
     }
 
     const [blogs, total] = await Promise.all([
@@ -114,22 +142,13 @@ const listBlogs = async (req, res, next) => {
 
 const createBlog = async (req, res, next) => {
   try {
-    const title = normalizeString(req.body?.title);
-    const content = normalizeString(req.body?.content);
-
-    if (!title) {
-      const error = new Error("title is required");
-      error.statusCode = 400;
-      throw error;
-    }
-    if (!content) {
-      const error = new Error("content is required");
-      error.statusCode = 400;
-      throw error;
-    }
+    const title = readLocalizedField(req.body?.title, "title");
+    const content = readLocalizedField(req.body?.content, "content");
+    assertBilingualRequired(title, { fieldName: "title" });
+    assertBilingualRequired(content, { fieldName: "content" });
 
     const slugInput = normalizeNullableString(req.body?.slug);
-    const slug = slugInput ? slugify(slugInput) : slugify(title);
+    const slug = slugInput ? slugify(slugInput) : slugify(blogTitleSlugSource(title));
     if (!slug) {
       const error = new Error("slug is required");
       error.statusCode = 400;
@@ -169,19 +188,28 @@ const createBlog = async (req, res, next) => {
     const payload = {
       title,
       slug,
-      category: normalizeNullableString(req.body?.category),
-      shortDesc: normalizeNullableString(req.body?.shortDesc),
       content,
       author: normalizeNullableString(req.body?.author),
       tags: parseTags(req.body?.tags),
       image: normalizeNullableString(req.body?.image),
       ogImage: normalizeNullableString(req.body?.ogImage),
-      metaTitle: normalizeNullableString(req.body?.metaTitle),
-      metaDescription: normalizeNullableString(req.body?.metaDescription),
       status,
       publishedAt,
       views: Object.prototype.hasOwnProperty.call(req.body, "views") ? Number(req.body.views) : undefined,
     };
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "category")) {
+      payload.category = readLocalizedField(req.body.category, "category");
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "shortDesc")) {
+      payload.shortDesc = readLocalizedField(req.body.shortDesc, "shortDesc");
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "metaTitle")) {
+      payload.metaTitle = readLocalizedField(req.body.metaTitle, "metaTitle");
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "metaDescription")) {
+      payload.metaDescription = readLocalizedField(req.body.metaDescription, "metaDescription");
+    }
 
     if (payload.views !== undefined && Number.isNaN(payload.views)) {
       const error = new Error("views must be a number");
@@ -243,15 +271,18 @@ const updateBlog = async (req, res, next) => {
 
     const hasOwn = (key) => Object.prototype.hasOwnProperty.call(req.body, key);
 
-    const nextTitle = hasOwn("title") ? normalizeNullableString(req.body.title) : undefined;
+    const nextTitle = hasOwn("title") ? readLocalizedField(req.body.title, "title") : undefined;
     const nextSlugInput = hasOwn("slug") ? normalizeNullableString(req.body.slug) : undefined;
 
-    const titleWillChange = typeof nextTitle === "string" && nextTitle !== blog.title;
+    const titleWillChange =
+      nextTitle &&
+      (normalizeString(nextTitle.en) !== normalizeString(blog.title?.en) ||
+        normalizeString(nextTitle.ar) !== normalizeString(blog.title?.ar));
 
     let nextSlug = blog.slug;
     const slugIsMissingOrEmpty = !nextSlugInput;
     if (titleWillChange && slugIsMissingOrEmpty) {
-      nextSlug = slugify(nextTitle);
+      nextSlug = slugify(blogTitleSlugSource(nextTitle));
     }
     if (typeof nextSlugInput === "string" && nextSlugInput) {
       nextSlug = slugify(nextSlugInput);
@@ -279,18 +310,25 @@ const updateBlog = async (req, res, next) => {
       throw error;
     }
 
-    if (hasOwn("title")) blog.title = nextTitle;
+    if (hasOwn("title")) {
+      assertBilingualRequired(nextTitle, { fieldName: "title" });
+      blog.title = nextTitle;
+    }
     blog.slug = nextSlug;
 
-    if (hasOwn("category")) blog.category = normalizeNullableString(req.body.category);
-    if (hasOwn("shortDesc")) blog.shortDesc = normalizeNullableString(req.body.shortDesc);
-    if (hasOwn("content")) blog.content = normalizeString(req.body.content);
+    if (hasOwn("category")) blog.category = readLocalizedField(req.body.category, "category");
+    if (hasOwn("shortDesc")) blog.shortDesc = readLocalizedField(req.body.shortDesc, "shortDesc");
+    if (hasOwn("content")) {
+      const nextContent = readLocalizedField(req.body.content, "content");
+      assertBilingualRequired(nextContent, { fieldName: "content" });
+      blog.content = nextContent;
+    }
     if (hasOwn("author")) blog.author = normalizeNullableString(req.body.author);
 
     if (hasOwn("tags")) blog.tags = parseTags(req.body.tags);
 
-    if (hasOwn("metaTitle")) blog.metaTitle = normalizeNullableString(req.body.metaTitle);
-    if (hasOwn("metaDescription")) blog.metaDescription = normalizeNullableString(req.body.metaDescription);
+    if (hasOwn("metaTitle")) blog.metaTitle = readLocalizedField(req.body.metaTitle, "metaTitle");
+    if (hasOwn("metaDescription")) blog.metaDescription = readLocalizedField(req.body.metaDescription, "metaDescription");
 
     if (hasOwn("status")) {
       blog.status = nextStatus || "draft";

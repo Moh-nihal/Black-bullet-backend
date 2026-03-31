@@ -2,14 +2,63 @@ const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
+const localizedStringSchema = new Schema(
+  {
+    en: {
+      type: String,
+      required: [true, "English text is required"],
+      trim: true,
+      minlength: [2, "English text must be at least 2 characters"],
+      maxlength: [120, "English text cannot exceed 120 characters"],
+    },
+    ar: {
+      type: String,
+      required: [true, "Arabic text is required"],
+      trim: true,
+      minlength: [2, "Arabic text must be at least 2 characters"],
+      maxlength: [120, "Arabic text cannot exceed 120 characters"],
+    },
+  },
+  { _id: false }
+);
+
+const makeOptionalLocalizedPairSchema = (maxLen) =>
+  new Schema(
+    {
+      en: {
+        type: String,
+        trim: true,
+        maxlength: [maxLen, `English text cannot exceed ${maxLen} characters`],
+        default: "",
+      },
+      ar: {
+        type: String,
+        trim: true,
+        maxlength: [maxLen, `Arabic text cannot exceed ${maxLen} characters`],
+        default: "",
+      },
+    },
+    { _id: false }
+  );
+
+const localizedDescriptionSchema = makeOptionalLocalizedPairSchema(2000);
+const localizedCategorySchema = makeOptionalLocalizedPairSchema(100);
+const localizedMetaTitleSchema = makeOptionalLocalizedPairSchema(180);
+const localizedMetaDescriptionSchema = makeOptionalLocalizedPairSchema(320);
+
+const migrateLegacyLocalized = (value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return { en: trimmed, ar: trimmed };
+  }
+  return value;
+};
+
 const serviceSchema = new Schema(
   {
     title: {
-      type: String,
+      type: localizedStringSchema,
       required: [true, "Service title is required"],
-      trim: true,
-      minlength: [2, "Service title must be at least 2 characters"],
-      maxlength: [120, "Service title cannot exceed 120 characters"],
       alias: "name",
     },
     slug: {
@@ -23,9 +72,8 @@ const serviceSchema = new Schema(
       match: [/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Invalid slug format"],
     },
     description: {
-      type: String,
-      trim: true,
-      maxlength: [2000, "Description cannot exceed 2000 characters"],
+      type: localizedDescriptionSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     price: {
       type: Number,
@@ -41,14 +89,12 @@ const serviceSchema = new Schema(
     ],
     features: [
       {
-        type: String,
-        trim: true,
+        type: localizedStringSchema,
       },
     ],
     category: {
-      type: String,
-      trim: true,
-      maxlength: [100, "Category cannot exceed 100 characters"],
+      type: localizedCategorySchema,
+      default: () => ({ en: "", ar: "" }),
       index: true,
     },
     status: {
@@ -58,14 +104,12 @@ const serviceSchema = new Schema(
       index: true,
     },
     metaTitle: {
-      type: String,
-      trim: true,
-      maxlength: [180, "Meta title cannot exceed 180 characters"],
+      type: localizedMetaTitleSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     metaDescription: {
-      type: String,
-      trim: true,
-      maxlength: [320, "Meta description cannot exceed 320 characters"],
+      type: localizedMetaDescriptionSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     metaKeywords: [
       {
@@ -80,9 +124,24 @@ const serviceSchema = new Schema(
   }
 );
 
+serviceSchema.pre("validate", function migrateLegacyServiceDocument() {
+  if (typeof this.title === "string") this.title = migrateLegacyLocalized(this.title);
+  if (typeof this.description === "string") this.description = migrateLegacyLocalized(this.description);
+  if (typeof this.category === "string") this.category = migrateLegacyLocalized(this.category);
+  if (typeof this.metaTitle === "string") this.metaTitle = migrateLegacyLocalized(this.metaTitle);
+  if (typeof this.metaDescription === "string") {
+    this.metaDescription = migrateLegacyLocalized(this.metaDescription);
+  }
+
+  if (Array.isArray(this.features)) {
+    this.features = this.features.map((item) => migrateLegacyLocalized(item));
+  }
+});
+
 serviceSchema.index({ slug: 1 }, { unique: true });
-serviceSchema.index({ title: 1 });
-serviceSchema.index({ category: 1, title: 1 });
+serviceSchema.index({ "title.en": 1 });
+serviceSchema.index({ "title.ar": 1 });
+serviceSchema.index({ category: 1, "title.en": 1 });
 
 serviceSchema.virtual("image")
   .get(function getPrimaryImage() {

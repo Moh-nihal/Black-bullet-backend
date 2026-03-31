@@ -8,6 +8,8 @@ const {
   getPublicServiceBySlugOrId,
   listPublicGalleryItems,
 } = require("../controllers/publicController");
+const { getPublicAvailableSlots } = require("../controllers/bookingsController");
+const publicLandingRouter = require("./publicLanding");
 
 const router = express.Router();
 
@@ -17,5 +19,7 @@ router.get("/blog/:slugOrId", getPublicBlogBySlugOrId);
 router.get("/services", listPublicServices);
 router.get("/services/:idOrSlug", getPublicServiceBySlugOrId);
 router.get("/gallery", listPublicGalleryItems);
+router.get("/bookings/available-slots", getPublicAvailableSlots);
+router.use("/", publicLandingRouter);
 
 module.exports = router;

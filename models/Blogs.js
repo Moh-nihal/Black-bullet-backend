@@ -2,14 +2,81 @@ const mongoose = require("mongoose");
 
 const { Schema } = mongoose;
 
+const localizedTitleSchema = new Schema(
+  {
+    en: {
+      type: String,
+      required: [true, "English title is required"],
+      trim: true,
+      minlength: [3, "English title must be at least 3 characters"],
+      maxlength: [180, "English title cannot exceed 180 characters"],
+    },
+    ar: {
+      type: String,
+      required: [true, "Arabic title is required"],
+      trim: true,
+      minlength: [3, "Arabic title must be at least 3 characters"],
+      maxlength: [180, "Arabic title cannot exceed 180 characters"],
+    },
+  },
+  { _id: false }
+);
+
+const localizedContentSchema = new Schema(
+  {
+    en: {
+      type: String,
+      required: [true, "English content is required"],
+      trim: true,
+      minlength: [1, "English content is required"],
+    },
+    ar: {
+      type: String,
+      required: [true, "Arabic content is required"],
+      trim: true,
+      minlength: [1, "Arabic content is required"],
+    },
+  },
+  { _id: false }
+);
+
+const makeOptionalLocalizedPairSchema = (maxLen) =>
+  new Schema(
+    {
+      en: {
+        type: String,
+        trim: true,
+        maxlength: [maxLen, `English text cannot exceed ${maxLen} characters`],
+        default: "",
+      },
+      ar: {
+        type: String,
+        trim: true,
+        maxlength: [maxLen, `Arabic text cannot exceed ${maxLen} characters`],
+        default: "",
+      },
+    },
+    { _id: false }
+  );
+
+const localizedCategorySchema = makeOptionalLocalizedPairSchema(120);
+const localizedShortDescSchema = makeOptionalLocalizedPairSchema(500);
+const localizedMetaTitleSchema = makeOptionalLocalizedPairSchema(180);
+const localizedMetaDescriptionSchema = makeOptionalLocalizedPairSchema(320);
+
+const migrateLegacyLocalized = (value) => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return { en: trimmed, ar: trimmed };
+  }
+  return value;
+};
+
 const blogPostSchema = new Schema(
   {
     title: {
-      type: String,
+      type: localizedTitleSchema,
       required: [true, "Blog title is required"],
-      trim: true,
-      minlength: [3, "Title must be at least 3 characters"],
-      maxlength: [180, "Title cannot exceed 180 characters"],
     },
     slug: {
       type: String,
@@ -21,18 +88,16 @@ const blogPostSchema = new Schema(
       index: true,
     },
     category: {
-      type: String,
-      trim: true,
-      maxlength: [120, "Category cannot exceed 120 characters"],
+      type: localizedCategorySchema,
+      default: () => ({ en: "", ar: "" }),
       index: true,
     },
     shortDesc: {
-      type: String,
-      trim: true,
-      maxlength: [500, "Short description cannot exceed 500 characters"],
+      type: localizedShortDescSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     content: {
-      type: String,
+      type: localizedContentSchema,
       required: [true, "Blog content is required"],
     },
     author: {
@@ -57,14 +122,12 @@ const blogPostSchema = new Schema(
       trim: true,
     },
     metaTitle: {
-      type: String,
-      trim: true,
-      maxlength: [180, "Meta title cannot exceed 180 characters"],
+      type: localizedMetaTitleSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     metaDescription: {
-      type: String,
-      trim: true,
-      maxlength: [320, "Meta description cannot exceed 320 characters"],
+      type: localizedMetaDescriptionSchema,
+      default: () => ({ en: "", ar: "" }),
     },
     status: {
       type: String,
@@ -88,8 +151,26 @@ const blogPostSchema = new Schema(
   }
 );
 
+blogPostSchema.pre("validate", function migrateLegacyBlogDocument() {
+  if (typeof this.title === "string") this.title = migrateLegacyLocalized(this.title);
+  if (typeof this.category === "string") this.category = migrateLegacyLocalized(this.category);
+  if (typeof this.shortDesc === "string") this.shortDesc = migrateLegacyLocalized(this.shortDesc);
+  if (typeof this.content === "string") this.content = migrateLegacyLocalized(this.content);
+  if (typeof this.metaTitle === "string") this.metaTitle = migrateLegacyLocalized(this.metaTitle);
+  if (typeof this.metaDescription === "string") {
+    this.metaDescription = migrateLegacyLocalized(this.metaDescription);
+  }
+});
+
 blogPostSchema.index({ status: 1, publishedAt: -1 });
-blogPostSchema.index({ title: "text", shortDesc: "text", content: "text" });
+blogPostSchema.index({
+  "title.en": "text",
+  "title.ar": "text",
+  "shortDesc.en": "text",
+  "shortDesc.ar": "text",
+  "content.en": "text",
+  "content.ar": "text",
+});
 
 const BlogPost = mongoose.models.BlogPost || mongoose.model("BlogPost", blogPostSchema);
 

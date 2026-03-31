@@ -1,5 +1,6 @@
 const Booking = require("../models/Booking");
 const ContentPage = require("../models/ContentPage");
+const { verifyRecaptchaToken } = require("../utils/recaptcha");
 
 // Keep these mappings aligned with the frontend BookingForm options.
 const vehicleTypes = [
@@ -36,15 +37,29 @@ const dayAliases = {
 };
 
 const normalizeString = (value) => (typeof value === "string" ? value.trim() : "");
+const getClientIp = (req) => {
+  const forwarded = normalizeString(req.headers["x-forwarded-for"]);
+  if (forwarded) {
+    return normalizeString(forwarded.split(",")[0]);
+  }
+  return normalizeString(req.ip || req.socket?.remoteAddress);
+};
 
 const parseTimeSlot = (timeSlot) => {
   const raw = normalizeString(timeSlot);
-  const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return null;
+  if (!raw) return null;
 
-  let hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const meridiem = match[3].toUpperCase();
+  const hhmmMatch = raw.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (hhmmMatch) {
+    return { hours: Number(hhmmMatch[1]), minutes: Number(hhmmMatch[2]) };
+  }
+
+  const match12h = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match12h) return null;
+
+  let hours = Number(match12h[1]);
+  const minutes = Number(match12h[2]);
+  const meridiem = match12h[3].toUpperCase();
 
   if (meridiem === "AM") {
     if (hours === 12) hours = 0;
@@ -65,18 +80,16 @@ const parseHHmm = (value) => {
 
 const toMinutes = ({ hours, minutes }) => (hours * 60) + minutes;
 
-const formatMinutesTo12h = (totalMinutes) => {
+const formatMinutesTo24h = (totalMinutes) => {
   const hours24 = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  const suffix = hours24 >= 12 ? "PM" : "AM";
-  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
-  return `${String(hours12).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${suffix}`;
+  return `${String(hours24).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 };
 
 const normalizeSlotLabel = (value) => {
   const parsed = parseTimeSlot(value);
   if (!parsed) return "";
-  return formatMinutesTo12h(toMinutes(parsed));
+  return formatMinutesTo24h(toMinutes(parsed));
 };
 
 const parseIsoDateOnly = (value) => {
@@ -133,7 +146,7 @@ const getDubaiPartsFromUtcDate = (value) => {
     hours,
     minutes,
     isoDate: `${String(year).padStart(4, "0")}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
-    slotLabel: formatMinutesTo12h((hours * 60) + minutes),
+    slotLabel: formatMinutesTo24h((hours * 60) + minutes),
   };
 };
 
@@ -231,7 +244,7 @@ const getSlotsForDate = (targetDate, bookingConfig) => {
     cursor + bookingConfig.slotDuration <= closeMinutes;
     cursor += bookingConfig.slotDuration
   ) {
-    slots.push(formatMinutesTo12h(cursor));
+    slots.push(formatMinutesTo24h(cursor));
   }
 
   return {
@@ -273,17 +286,7 @@ const getAvailableSlots = async (req, res, next) => {
     }
     const availableSlots = slotInfo.slots.filter((slot) => !occupiedSlots.has(slot));
 
-    res.status(200).json({
-      ok: true,
-      data: {
-        date: dubaiDay.isoDate,
-        day: slotInfo.day,
-        closed: slotInfo.closed || availableSlots.length === 0,
-        timezone: "Asia/Dubai",
-        slotDuration: slotInfo.slotDuration,
-        slots: availableSlots,
-      },
-    });
+    res.status(200).json(availableSlots);
   } catch (error) {
     next(error);
   }
@@ -304,7 +307,18 @@ const createBooking = async (req, res, next) => {
       preferredDate: preferredDateInput,
       preferredTime,
       notes,
+      recaptchaToken,
     } = req.body || {};
+
+    const recaptchaResult = await verifyRecaptchaToken({
+      token: recaptchaToken,
+      remoteIp: getClientIp(req),
+    });
+    if (!recaptchaResult.ok) {
+      const error = new Error("reCAPTCHA verification failed");
+      error.statusCode = 400;
+      throw error;
+    }
 
     const resolvedVehicleType =
       normalizeString(vehicleType) ||
@@ -430,6 +444,7 @@ const createBooking = async (req, res, next) => {
 
 module.exports = {
   getAvailableSlots,
+  getPublicAvailableSlots: getAvailableSlots,
   createBooking,
 };
 

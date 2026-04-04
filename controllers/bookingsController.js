@@ -2,7 +2,8 @@ const Booking = require("../models/Booking");
 const ContentPage = require("../models/ContentPage");
 const { verifyRecaptchaToken } = require("../utils/recaptcha");
 
-// Keep these mappings aligned with the frontend BookingForm options.
+// Vehicle types: keep aligned with frontend BookingForm vehicle step.
+// Services: frontend sends `serviceType` (label from published services API); indices below are legacy fallback only.
 const vehicleTypes = [
   { label: "Supercar / Exotic" },
   { label: "Hyper Performance" },
@@ -286,7 +287,13 @@ const getAvailableSlots = async (req, res, next) => {
     }
     const availableSlots = slotInfo.slots.filter((slot) => !occupiedSlots.has(slot));
 
-    res.status(200).json(availableSlots);
+    res.status(200).json({
+      success: true,
+      data: {
+        closed: slotInfo.closed,
+        slots: availableSlots,
+      },
+    });
   } catch (error) {
     next(error);
   }

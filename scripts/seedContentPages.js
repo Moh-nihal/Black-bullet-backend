@@ -188,6 +188,28 @@ const DEFAULT_CONTENT = {
     footerTagline:
       "The pinnacle of performance tuning and aesthetic restoration in Dubai. Driven by precision, forged in heat.",
     copyrightText: "© 2024 BLACK BULLET GARAGE PERFORMANCE DUBAI. ALL RIGHTS RESERVED.",
+    footerBrandName: "BLACK BULLET",
+    footerBrandNameAr: "",
+    footerEngineeringTitle: "Engineering",
+    footerEngineeringTitleAr: "الهندسة",
+    footerConnectTitle: "Connect",
+    footerConnectTitleAr: "تواصل",
+    footerNewsletterTitle: "Subscribe",
+    footerNewsletterTitleAr: "اشترك",
+    footerNewsletterPlaceholder: "Email",
+    footerNewsletterPlaceholderAr: "البريد الإلكتروني",
+    footerEngineeringLinks: [
+      { label: "ECU Remapping", labelAr: "إعادة ضبط ECU", href: "/services" },
+      { label: "Carbon Fiber Kits", labelAr: "أطقم الألياف الكربونية", href: "/services" },
+      { label: "Exhaust Systems", labelAr: "أنظمة العادم", href: "/services" },
+    ],
+    footerConnectLinks: [
+      { label: "Contact", labelAr: "اتصل بنا", href: "/booking" },
+      { label: "Instagram", labelAr: "إنستغرام", href: "#" },
+      { label: "Privacy Policy", labelAr: "سياسة الخصوصية", href: "#" },
+    ],
+    footerShareUrl: "",
+    footerLocationUrl: "",
     mapsEmbedUrl: "https://www.google.com/maps/embed?pb=example",
     slotDuration: 30,
     workingHours: [

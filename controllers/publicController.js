@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 const ContentPage = require("../models/ContentPage");
-const Blog = require("../models/Blogs");
+require("../models/Blogs");
+const Blog = mongoose.model("Blog") || mongoose.model("BlogPost");
 const Service = require("../models/Service");
 const GalleryItem = require("../models/GalleryItem");
 

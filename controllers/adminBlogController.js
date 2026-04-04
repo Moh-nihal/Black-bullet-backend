@@ -193,6 +193,11 @@ const createBlog = async (req, res, next) => {
       tags: parseTags(req.body?.tags),
       image: normalizeNullableString(req.body?.image),
       ogImage: normalizeNullableString(req.body?.ogImage),
+      accentPhrase: req.body?.accentPhrase ? readLocalizedField(req.body.accentPhrase, "accentPhrase") : { en: "", ar: "" },
+      authorTitle: req.body?.authorTitle ? readLocalizedField(req.body.authorTitle, "authorTitle") : { en: "", ar: "" },
+      leadQuote: req.body?.leadQuote ? readLocalizedField(req.body.leadQuote, "leadQuote") : { en: "", ar: "" },
+      calloutTitle: req.body?.calloutTitle ? readLocalizedField(req.body.calloutTitle, "calloutTitle") : { en: "", ar: "" },
+      contentSections: Array.isArray(req.body?.contentSections) ? req.body.contentSections : [],
       status,
       publishedAt,
       views: Object.prototype.hasOwnProperty.call(req.body, "views") ? Number(req.body.views) : undefined,
@@ -324,6 +329,11 @@ const updateBlog = async (req, res, next) => {
       blog.content = nextContent;
     }
     if (hasOwn("author")) blog.author = normalizeNullableString(req.body.author);
+    if (hasOwn("accentPhrase")) blog.accentPhrase = readLocalizedField(req.body.accentPhrase, "accentPhrase");
+    if (hasOwn("authorTitle")) blog.authorTitle = readLocalizedField(req.body.authorTitle, "authorTitle");
+    if (hasOwn("leadQuote")) blog.leadQuote = readLocalizedField(req.body.leadQuote, "leadQuote");
+    if (hasOwn("calloutTitle")) blog.calloutTitle = readLocalizedField(req.body.calloutTitle, "calloutTitle");
+    if (hasOwn("contentSections")) blog.contentSections = Array.isArray(req.body.contentSections) ? req.body.contentSections : [];
 
     if (hasOwn("tags")) blog.tags = parseTags(req.body.tags);
 
@@ -333,6 +343,8 @@ const updateBlog = async (req, res, next) => {
     if (hasOwn("status")) {
       blog.status = nextStatus || "draft";
     }
+
+    console.log("Before save, blog.accentPhrase:", blog.accentPhrase, "req.body.accentPhrase:", req.body.accentPhrase);
 
     const statusToCheck = hasOwn("status") ? blog.status : blog.status;
     if (statusToCheck === "published") {

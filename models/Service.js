@@ -118,6 +118,28 @@ const serviceSchema = new Schema(
         lowercase: true,
       },
     ],
+    buttonName: {
+      type: makeOptionalLocalizedPairSchema(40),
+      default: () => ({ en: "", ar: "" })
+    },
+    stats: [
+      new Schema(
+        {
+          label: { type: makeOptionalLocalizedPairSchema(40), default: () => ({ en: "", ar: "" }) },
+          value: { type: makeOptionalLocalizedPairSchema(40), default: () => ({ en: "", ar: "" }) }
+        },
+        { _id: false }
+      )
+    ],
+    processSteps: [
+      new Schema(
+        {
+          title: { type: makeOptionalLocalizedPairSchema(100), default: () => ({ en: "", ar: "" }) },
+          desc: { type: makeOptionalLocalizedPairSchema(500), default: () => ({ en: "", ar: "" }) }
+        },
+        { _id: false }
+      )
+    ]
   },
   {
     timestamps: true,
@@ -132,9 +154,24 @@ serviceSchema.pre("validate", function migrateLegacyServiceDocument() {
   if (typeof this.metaDescription === "string") {
     this.metaDescription = migrateLegacyLocalized(this.metaDescription);
   }
+  if (typeof this.buttonName === "string") this.buttonName = migrateLegacyLocalized(this.buttonName);
 
   if (Array.isArray(this.features)) {
     this.features = this.features.map((item) => migrateLegacyLocalized(item));
+  }
+  if (Array.isArray(this.stats)) {
+    this.stats = this.stats.map((stat) => {
+      if (typeof stat.label === "string") stat.label = migrateLegacyLocalized(stat.label);
+      if (typeof stat.value === "string") stat.value = migrateLegacyLocalized(stat.value);
+      return stat;
+    });
+  }
+  if (Array.isArray(this.processSteps)) {
+    this.processSteps = this.processSteps.map((step) => {
+      if (typeof step.title === "string") step.title = migrateLegacyLocalized(step.title);
+      if (typeof step.desc === "string") step.desc = migrateLegacyLocalized(step.desc);
+      return step;
+    });
   }
 });
 

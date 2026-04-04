@@ -133,6 +133,14 @@ const localizeServiceForPublic = (service, locale) => {
 const localizeBlogForPublic = (blog, locale) => {
   if (!blog || typeof blog !== "object") return blog;
 
+  const contentSections = Array.isArray(blog.contentSections)
+    ? blog.contentSections.map((section) => ({
+        ...section,
+        heading: pickLocalizedString(section?.heading, locale),
+        body: pickLocalizedString(section?.body, locale),
+      }))
+    : blog.contentSections;
+
   return {
     ...blog,
     title: pickLocalizedString(blog.title, locale),
@@ -141,6 +149,12 @@ const localizeBlogForPublic = (blog, locale) => {
     category: pickLocalizedString(blog.category, locale),
     metaTitle: pickLocalizedString(blog.metaTitle, locale),
     metaDescription: pickLocalizedString(blog.metaDescription, locale),
+    accentPhrase: pickLocalizedString(blog.accentPhrase, locale),
+    authorTitle: pickLocalizedString(blog.authorTitle, locale),
+    leadQuote: pickLocalizedString(blog.leadQuote, locale),
+    calloutTitle: pickLocalizedString(blog.calloutTitle, locale),
+    body: blog.body !== undefined && blog.body !== null ? pickLocalizedString(blog.body, locale) : blog.body,
+    contentSections,
   };
 };
 

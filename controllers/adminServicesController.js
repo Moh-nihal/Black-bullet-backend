@@ -196,6 +196,16 @@ const buildServicePayload = (body, { partial = false } = {}) => {
     payload.price = 0;
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "buttonName")) {
+    payload.buttonName = body.buttonName;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "stats")) {
+    payload.stats = Array.isArray(body.stats) ? body.stats : [];
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "processSteps")) {
+    payload.processSteps = Array.isArray(body.processSteps) ? body.processSteps : [];
+  }
+
   return payload;
 };
 

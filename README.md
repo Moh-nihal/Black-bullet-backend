@@ -216,7 +216,7 @@ npm run seed:content
   - List available booking slots for a specific day
   - Query: `date=YYYY-MM-DD`
   - Localization note: slot generation uses configured working hours (see CMS `settings` page content)
-  - Returns: `["09:00", "10:00", ...]`
+  - Returns: `{ success, data: { closed: boolean, slots: string[] } }`
 
 - `GET /api/public/landing/:slug`
   - Fetches an active landing page variant using weighted A/B logic

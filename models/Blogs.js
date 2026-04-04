@@ -121,6 +121,31 @@ const blogPostSchema = new Schema(
       type: String,
       trim: true,
     },
+    accentPhrase: {
+      type: makeOptionalLocalizedPairSchema(200),
+      default: () => ({ en: "", ar: "" }),
+    },
+    authorTitle: {
+      type: makeOptionalLocalizedPairSchema(150),
+      default: () => ({ en: "", ar: "" }),
+    },
+    leadQuote: {
+      type: makeOptionalLocalizedPairSchema(1000),
+      default: () => ({ en: "", ar: "" }),
+    },
+    calloutTitle: {
+      type: makeOptionalLocalizedPairSchema(300),
+      default: () => ({ en: "", ar: "" }),
+    },
+    contentSections: [
+      new Schema(
+        {
+          heading: { type: makeOptionalLocalizedPairSchema(300), default: () => ({ en: "", ar: "" }) },
+          body: { type: makeOptionalLocalizedPairSchema(10000), default: () => ({ en: "", ar: "" }) },
+        },
+        { _id: false }
+      ),
+    ],
     metaTitle: {
       type: localizedMetaTitleSchema,
       default: () => ({ en: "", ar: "" }),
@@ -159,6 +184,18 @@ blogPostSchema.pre("validate", function migrateLegacyBlogDocument() {
   if (typeof this.metaTitle === "string") this.metaTitle = migrateLegacyLocalized(this.metaTitle);
   if (typeof this.metaDescription === "string") {
     this.metaDescription = migrateLegacyLocalized(this.metaDescription);
+  }
+  if (typeof this.accentPhrase === "string") this.accentPhrase = migrateLegacyLocalized(this.accentPhrase);
+  if (typeof this.authorTitle === "string") this.authorTitle = migrateLegacyLocalized(this.authorTitle);
+  if (typeof this.leadQuote === "string") this.leadQuote = migrateLegacyLocalized(this.leadQuote);
+  if (typeof this.calloutTitle === "string") this.calloutTitle = migrateLegacyLocalized(this.calloutTitle);
+
+  if (Array.isArray(this.contentSections)) {
+    this.contentSections = this.contentSections.map((section) => {
+      if (typeof section.heading === "string") section.heading = migrateLegacyLocalized(section.heading);
+      if (typeof section.body === "string") section.body = migrateLegacyLocalized(section.body);
+      return section;
+    });
   }
 });
 

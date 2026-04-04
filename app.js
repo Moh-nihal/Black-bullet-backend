@@ -14,6 +14,9 @@ const adminBlogRouter = require("./routes/adminBlog");
 const adminGalleryRouter = require("./routes/adminGallery");
 const adminBookingsRouter = require("./routes/adminBookings");
 const adminContentRouter = require("./routes/adminContent");
+const publicLandingRouter = require("./routes/publicLanding");
+const adminLandingRouter = require("./routes/adminLanding");
+const adminLeadsRouter = require("./routes/adminLeads");
 const { notFoundHandler, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
@@ -43,6 +46,7 @@ app.get("/", (_req, res) => {
 
 app.use("/api/health", healthRouter);
 app.use("/api/public", publicRouter);
+app.use("/api/public", publicLandingRouter);
 app.use("/api/admin", authRouter);
 app.use("/api/admin/dashboard", adminDashboardRouter);
 app.use("/api/bookings", bookingsRouter);
@@ -51,6 +55,8 @@ app.use("/api/admin/blog", adminBlogRouter);
 app.use("/api/admin/gallery", adminGalleryRouter);
 app.use("/api/admin/bookings", adminBookingsRouter);
 app.use("/api/admin/content", adminContentRouter);
+app.use("/api/admin/landing", adminLandingRouter);
+app.use("/api/admin/leads", adminLeadsRouter);
 app.use("/api/media", mediaRouter);
 
 app.use(notFoundHandler);
